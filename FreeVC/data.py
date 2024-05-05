@@ -119,6 +119,32 @@ def generate_split():
     print("Done!")
 
 
+@cli.command()
+def preprocess_spk():
+    config = DataConfig()
+
+    in_dir = config.vctk_16k_dir
+    out_dir = config.preprocess_spk_dir
+
+    wav_names = []
+    for speaker in os.listdir(in_dir):
+        spk_dir = os.path.join(in_dir, speaker)
+        if os.path.isdir(spk_dir):
+            wav_names.extend(os.listdir(spk_dir))
+
+    spk_encoder = SpeakerEncoder(config.pretrained_spk_ckpt_path)
+
+    for wav_name in tqdm(wav_names):
+        speaker = wav_name[:4]
+        wav_path = os.path.join(in_dir, speaker, wav_name)
+        spk_wav = speaker_encoder.audio.preprocess_wav(wav_path)
+        spk = spk_encoder.embed_utterance(spk_wav)
+        spk = torch.from_numpy(spk)
+
+        os.makedirs(os.path.join(out_dir, speaker), exist_ok=True)
+        torch.save(spk, os.path.join(out_dir, speaker, wav_name.replace(".wav", ".pt")))
+
+
 def mel_resize(mel, height):  # 68-92
     tgt = torchvision.transforms.v2.functional.resize(mel, [height, mel.size(-1)])
     if height >= mel.size(-2):
@@ -157,9 +183,8 @@ class VCTK:
         assert sr == 16000
 
         if self.config.use_pretrained_spk:
-            spk_wav = speaker_encoder.audio.preprocess_wav(wav_16k.squeeze(0).numpy(), 16000)
-            spk = self.spk_encoder.embed_utterance(spk_wav)
-            spk = torch.from_numpy(spk)
+            spk_path = os.path.join(self.config.preprocess_spk_dir, path.replace(".wav", ".pt"))
+            spk = torch.load(spk_path)
         else:
             spk = None
 

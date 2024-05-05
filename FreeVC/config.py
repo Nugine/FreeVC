@@ -12,6 +12,7 @@ class DataConfig:
     split_dir: str = "./data/split"
 
     pretrained_spk_ckpt_path: str = "speaker_encoder/ckpt/pretrained_bak_5805000.pt"
+    preprocess_spk_dir: str = "./data/spk"
 
     use_sr_augment: bool = True
     use_pretrained_spk: bool = True
