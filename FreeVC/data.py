@@ -229,12 +229,15 @@ class VCTKDataset(Dataset):
 
 @cli.command()
 def iter_train_set():
-    # vctk = VCTK(config=DataConfig())
-    # train_set = VCTKDataset(vctk, "train")
+    vctk = VCTK(config=DataConfig())
+    train_set = VCTKDataset(vctk, "train")
 
-    # for i in tqdm(range(len(train_set))):
-    #     ssl, spec, wav_norm, spk = train_set[i]
+    for i in tqdm(range(len(train_set))):
+        ssl, spec, wav_norm, spk = train_set[i]
 
+
+@cli.command()
+def iter_train_loader():
     dm = VCTKDataModule(config=DataConfig())
     dm.setup("fit")
     for batch in tqdm(dm.train_dataloader()):
