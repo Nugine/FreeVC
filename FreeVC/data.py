@@ -160,6 +160,11 @@ def mel_resize(mel, height):  # 68-92
         return torch.cat((tgt, silence), 1)
 
 
+@torch.no_grad()
+def calc_ssl_features(wavlm, wav):
+    return wavlm(wav).last_hidden_state.transpose(1, 2)
+
+
 class VCTK:
     def __init__(self, *, config: DataConfig) -> None:
         super().__init__()
@@ -212,15 +217,11 @@ class VCTK:
             assert sr == 22050
             wav_22k = wav_22k.cuda()
             wav_sr = self.sr_augment(wav_22k, h)
-            ssl = self.calc_ssl_features(wav_sr).squeeze_(0)
+            ssl = calc_ssl_features(self.wavlm, wav_sr).squeeze_(0)
         else:
-            ssl = self.calc_ssl_features(wav_16k).squeeze_(0)
+            ssl = calc_ssl_features(self.wavlm, wav_16k).squeeze_(0)
 
         return ssl, spec, wav_norm, spk
-
-    @torch.no_grad()
-    def calc_ssl_features(self, wav):
-        return self.wavlm(wav).last_hidden_state.transpose(1, 2)
 
     @torch.no_grad()
     def sr_augment(self, wav, h):
