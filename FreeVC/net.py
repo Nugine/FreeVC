@@ -8,7 +8,7 @@ import torch.nn as nn
 
 
 @cli.command()
-def show_model():
+def show_net():
     data_config = DataConfig()
     model_config = ModelConfig()
     net_g = SynthesizerTrn(
