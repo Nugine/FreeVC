@@ -328,11 +328,17 @@ class VCTK:
 
         if self.config.use_sr_augment:
             h = random.randint(68, 92)
-            wav_22k, sr = torchaudio.load(os.path.join(self.config.vctk_22k_dir, path))
-            assert sr == 22050
-            wav_22k = wav_22k.cuda()
-            wav_sr = sr_augment(wav_22k, h, self.hifigan, self.hifigan_config, self.resample_22kto16k)
-            ssl = calc_ssl_features(self.wavlm, wav_sr).squeeze_(0)
+
+            ssl_path = os.path.join(self.config.preprocess_sr_dir, path.replace(".wav", f"_{h}.pt"))
+
+            if os.path.exists(ssl_path):
+                ssl = torch.load(ssl_path).cuda().squeeze_(0)
+            else:
+                wav_22k, sr = torchaudio.load(os.path.join(self.config.vctk_22k_dir, path))
+                assert sr == 22050
+                wav_22k = wav_22k.cuda()
+                wav_sr = sr_augment(wav_22k, h, self.hifigan, self.hifigan_config, self.resample_22kto16k)
+                ssl = calc_ssl_features(self.wavlm, wav_sr).squeeze_(0)
         else:
             ssl_path = os.path.join(self.config.preprocess_ssl_dir, path.replace(".wav", ".pt"))
             ssl = torch.load(ssl_path).cuda().squeeze_(0)
