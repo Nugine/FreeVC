@@ -364,8 +364,11 @@ def iter_train_set():
     vctk = VCTK(config=DataConfig())
     train_set = VCTKDataset(vctk, "train")
 
+    # print(vctk.load_sample("p254/p254_008.wav"))
+
     for i in tqdm(range(len(train_set))):
         ssl, spec, wav_norm, spk = train_set[i]
+        tqdm.write(f"{ssl.shape}, {spec.shape}, {wav_norm.shape}, {spk.shape}")  # type:ignore
 
 
 @cli.command()
