@@ -12,6 +12,7 @@ class DataConfig:
     split_dir: str = "./data/split"
 
     use_sr_augment: bool = True
+    use_pretrained_spk: bool = True
 
     batch_size: int = 32
 
@@ -19,6 +20,8 @@ class DataConfig:
     filter_length: int = 1280
     hop_length: int = 320
     win_length: int = 1280
+
+    max_speclen: int = 128
 
 
 @dataclass
@@ -41,4 +44,4 @@ class ModelConfig:
     use_spectral_norm: bool = False
     gin_channels: int = 256
     ssl_dim: int = 1024
-    use_spk: bool = True
+    use_pretrained_spk: bool = True

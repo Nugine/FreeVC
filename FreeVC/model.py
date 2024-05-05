@@ -29,7 +29,7 @@ def show_model():
         upsample_kernel_sizes=model_config.upsample_kernel_sizes,
         gin_channels=model_config.gin_channels,
         ssl_dim=model_config.ssl_dim,
-        use_spk=model_config.use_spk,
+        use_pretrained_spk=model_config.use_pretrained_spk,
     )
     net_d = vits.MultiPeriodDiscriminator(
         use_spectral_norm=model_config.use_spectral_norm,
@@ -115,7 +115,7 @@ class SynthesizerTrn(nn.Module):
         upsample_kernel_sizes,
         gin_channels,
         ssl_dim,
-        use_spk,
+        use_pretrained_spk,
     ):
         super().__init__()
         self.spec_channels = spec_channels
@@ -135,7 +135,7 @@ class SynthesizerTrn(nn.Module):
         self.segment_size = segment_size
         self.gin_channels = gin_channels
         self.ssl_dim = ssl_dim
-        self.use_spk = use_spk
+        self.use_pretrained_spk = use_pretrained_spk
 
         self.enc_p = Encoder(ssl_dim, inter_channels, hidden_channels, 5, 1, 16)
         self.dec = vits.Generator(
@@ -165,7 +165,7 @@ class SynthesizerTrn(nn.Module):
             n_layers=4,
             gin_channels=gin_channels,
         )
-        if not self.use_spk:
+        if not self.use_pretrained_spk:
             self.enc_spk = SpeakerEncoder(model_hidden_size=gin_channels, model_embedding_size=gin_channels)
 
     def forward(self, c, spec, g=None, mel=None, c_lengths=None, spec_lengths=None):
@@ -174,7 +174,7 @@ class SynthesizerTrn(nn.Module):
         if spec_lengths is None:
             spec_lengths = (torch.ones(spec.size(0)) * spec.size(-1)).to(spec.device)
 
-        if not self.use_spk:
+        if not self.use_pretrained_spk:
             g = self.enc_spk(mel.transpose(1, 2))  # type:ignore
         g = g.unsqueeze(-1)  # type:ignore
 
@@ -190,7 +190,7 @@ class SynthesizerTrn(nn.Module):
     def infer(self, c, g=None, mel=None, c_lengths=None):
         if c_lengths is None:
             c_lengths = (torch.ones(c.size(0)) * c.size(-1)).to(c.device)
-        if not self.use_spk:
+        if not self.use_pretrained_spk:
             g = self.enc_spk.embed_utterance(mel.transpose(1, 2))  # type:ignore
         g = g.unsqueeze(-1)  # type:ignore
 

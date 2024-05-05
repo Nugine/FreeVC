@@ -4,6 +4,7 @@ from .utils import read_txt_lines
 from .wavlm import load_wavlm
 from .hifigan import load_hifigan
 from .mel_processing import mel_spectrogram_torch, spectrogram_torch
+from . import vits
 
 import os
 import random
@@ -172,7 +173,9 @@ class VCTK:
         else:
             ssl = self.calc_ssl_features(wav_16k)
 
-        return wav_norm, spec, ssl
+        spk = None  # TODO
+
+        return ssl, spec, wav_norm, spk
 
     @torch.no_grad()
     def calc_ssl_features(self, wav):
@@ -219,22 +222,64 @@ def iter_train_set():
     train_set = VCTKDataset(vctk, "train")
 
     for i in tqdm(range(len(train_set))):
-        wav_norm, spec, ssl = train_set[i]
+        ssl, spec, wav_norm, spk = train_set[i]
 
 
 class VCTKCollate:
-    def __init__(self):
-        pass
+    def __init__(self, config: DataConfig):
+        self.config = config
 
     def __call__(self, batch):
-        max_wav_length = max(sample["wav"].shape[-1] for sample in batch)
-        wavs = []
-        for sample in batch:
-            wav = sample["wav"]
-            if wav.shape[-1] < max_wav_length:
-                wav = F.pad(wav, (0, max_wav_length - wav.shape[-1]))
-            wavs.append(wav)
-        return {"wav": torch.stack(wavs)}
+        # Right zero-pad all one-hot text sequences to max input length
+        _, ids_sorted_decreasing = torch.sort(torch.LongTensor([x[0].size(1) for x in batch]), dim=0, descending=True)
+
+        max_spec_len = max([x[1].size(1) for x in batch])
+        max_wav_len = max([x[2].size(1) for x in batch])
+
+        spec_lengths = torch.LongTensor(len(batch))
+        wav_lengths = torch.LongTensor(len(batch))
+        if self.config.use_pretrained_spk:
+            spks = torch.FloatTensor(len(batch), batch[0][3].size(0))
+        else:
+            spks = None
+
+        c_padded = torch.FloatTensor(len(batch), batch[0][0].size(0), max_spec_len)
+        spec_padded = torch.FloatTensor(len(batch), batch[0][1].size(0), max_spec_len)
+        wav_padded = torch.FloatTensor(len(batch), 1, max_wav_len)
+        c_padded.zero_()
+        spec_padded.zero_()
+        wav_padded.zero_()
+
+        for i in range(len(ids_sorted_decreasing)):
+            row = batch[ids_sorted_decreasing[i]]
+
+            c = row[0]
+            c_padded[i, :, : c.size(1)] = c
+
+            spec = row[1]
+            spec_padded[i, :, : spec.size(1)] = spec
+            spec_lengths[i] = spec.size(1)
+
+            wav = row[2]
+            wav_padded[i, :, : wav.size(1)] = wav
+            wav_lengths[i] = wav.size(1)
+
+            if self.config.use_pretrained_spk:
+                spks[i] = row[3]  # type:ignore
+
+        spec_seglen = (
+            spec_lengths[-1] if spec_lengths[-1] < self.config.max_speclen + 1 else self.config.max_speclen + 1
+        )
+        wav_seglen = spec_seglen * self.config.hop_length
+
+        spec_padded, ids_slice = vits.rand_spec_segments(spec_padded, spec_lengths, spec_seglen)  # type:ignore
+        wav_padded = vits.slice_segments(wav_padded, ids_slice * self.hps.data.hop_length, wav_seglen)  # type:ignore
+        c_padded = vits.slice_segments(c_padded, ids_slice, spec_seglen)[:, :, :-1]  # type:ignore
+
+        spec_padded = spec_padded[:, :, :-1]
+        wav_padded = wav_padded[:, :, : -self.config.hop_length]
+
+        return c_padded, spec_padded, wav_padded, spks
 
 
 class VCTKDataModule(LightningDataModule):
@@ -252,7 +297,7 @@ class VCTKDataModule(LightningDataModule):
         return DataLoader(
             dataset,
             shuffle=shuffle,
-            collate_fn=VCTKCollate(),
+            collate_fn=VCTKCollate(self.config),
             batch_size=self.config.batch_size,
         )
 
