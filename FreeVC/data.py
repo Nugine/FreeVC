@@ -238,7 +238,7 @@ def iter_train_set():
     dm = VCTKDataModule(config=DataConfig())
     dm.setup("fit")
     for batch in tqdm(dm.train_dataloader()):
-        print(batch[0].shape, batch[1].shape, batch[2].shape)
+        tqdm.write(f"{batch[0].shape}, {batch[1].shape}, {batch[2].shape}, {batch[3].shape}")
 
 
 class VCTKCollate:
