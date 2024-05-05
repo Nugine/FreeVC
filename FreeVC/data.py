@@ -159,6 +159,7 @@ class VCTK:
         if self.config.use_pretrained_spk:
             spk_wav = speaker_encoder.audio.preprocess_wav(wav_16k.squeeze(0).numpy(), 16000)
             spk = self.spk_encoder.embed_utterance(spk_wav)
+            spk = torch.from_numpy(spk)
         else:
             spk = None
 
