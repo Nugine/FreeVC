@@ -1,5 +1,6 @@
 from .env import cli
-from .config import get_config
+from .config import get_hard_config
+from .utils import read_txt_lines
 
 import os
 import random
@@ -9,6 +10,11 @@ import numpy as np
 from scipy.io import wavfile
 from multiprocessing import Pool, cpu_count
 from tqdm.auto import tqdm
+from lightning import LightningDataModule
+from torch.utils.data import Dataset, DataLoader
+import torchaudio
+import torch.nn.functional as F
+import torch
 
 
 def downsample(args):
@@ -46,7 +52,7 @@ def downsample(args):
 
 @cli.command()
 def resample_vctk():
-    config = get_config()
+    config = get_hard_config()
 
     in_dir = config.dataset.vctk_dir
     target = [
@@ -73,7 +79,7 @@ def resample_vctk():
 
 @cli.command()
 def generate_split():
-    config = get_config()
+    config = get_hard_config()
 
     src_dir = config.dataset.vctk_16k_dir
     split_dir = config.dataset.split_dir
@@ -106,3 +112,68 @@ def generate_split():
                 f.write(f"{speaker}/{wav_name}" + "\n")
 
     print("Done!")
+
+
+class VCTKDataset(Dataset):
+    def __init__(self, split: str):
+        super().__init__()
+
+        config = get_hard_config()
+        self.vctk_16k_dir = config.dataset.vctk_16k_dir
+        self.vctk_22k_dir = config.dataset.vctk_22k_dir
+
+        split_path = os.path.join(config.dataset.split_dir, f"{split}.txt")
+        self.audio_paths = read_txt_lines(split_path)
+
+    def __len__(self):
+        return len(self.audio_paths)
+
+    def __getitem__(self, idx):
+        wav_16k = self.load_wav_16k(self.audio_paths[idx])
+        return {"wav": wav_16k}
+
+    def load_wav_16k(self, path):
+        wav, _ = torchaudio.load(os.path.join(self.vctk_16k_dir, path))
+        return wav
+
+    def load_wav_22k(self, path):
+        wav, _ = torchaudio.load(os.path.join(self.vctk_22k_dir, path))
+        return wav
+
+
+class VCTKCollate:
+    def __init__(self):
+        pass
+
+    def __call__(self, batch):
+        max_wav_length = max(sample["wav"].shape[-1] for sample in batch)
+        wavs = []
+        for sample in batch:
+            wav = sample["wav"]
+            if wav.shape[-1] < max_wav_length:
+                wav = F.pad(wav, (0, max_wav_length - wav.shape[-1]))
+            wavs.append(wav)
+        return {"wav": torch.stack(wavs)}
+
+
+# @cli.command()
+# def show_vctk_dataset():
+#     dataset = VCTKDataset("train")
+#     print(len(dataset))
+#     print(dataset[0])
+
+#     dataloader = DataLoader(dataset, batch_size=4, shuffle=True, collate_fn=VCTKCollate())
+#     batch = next(iter(dataloader))
+#     print(batch["wav"].shape)
+
+
+# class VCTKDataModule(LightningDataModule):
+#     def __init__(self):
+#         super().__init__()
+
+#     def setup(self, stage: str):
+#         self.audio_paths = {}
+#         config = get_hard_config()
+#         for split in ["train", "val", "test"]:
+#             split_path = os.path.join(config.dataset.split_dir, f"{split}.txt")
+#             self.audio_paths[split] = read_txt_lines(split_path)

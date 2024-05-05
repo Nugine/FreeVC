@@ -19,5 +19,5 @@ class Config:
 _config = Config()
 
 
-def get_config():
+def get_hard_config():
     return _config
