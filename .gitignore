@@ -1,0 +1,10 @@
+__pycache__
+.vscode
+.ruff_cache
+.ipynb_checkpoints
+
+/data
+/target
+/temp
+/logs
+/ckpt
