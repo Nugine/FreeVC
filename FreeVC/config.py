@@ -12,7 +12,7 @@ class DataConfig:
     split_dir: str = "./data/split"
 
     use_sr_augment: bool = True
-    use_pretrained_spk: bool = False
+    use_pretrained_spk: bool = True
 
     batch_size: int = 32
 
@@ -44,4 +44,4 @@ class ModelConfig:
     use_spectral_norm: bool = False
     gin_channels: int = 256
     ssl_dim: int = 1024
-    use_pretrained_spk: bool = False
+    use_pretrained_spk: bool = True

@@ -168,9 +168,9 @@ class VCTK:
             assert sr == 22050
             wav_22k = wav_22k.cuda()
             wav_sr = self.sr_augment(wav_22k, h)
-            ssl = self.calc_ssl_features(wav_sr)
+            ssl = self.calc_ssl_features(wav_sr).squeeze_(0)
         else:
-            ssl = self.calc_ssl_features(wav_16k)
+            ssl = self.calc_ssl_features(wav_16k).squeeze_(0)
 
         spk = None  # TODO
 
@@ -217,8 +217,8 @@ class VCTKDataset(Dataset):
 
 @cli.command()
 def iter_train_set():
-    vctk = VCTK(config=DataConfig())
-    train_set = VCTKDataset(vctk, "train")
+    # vctk = VCTK(config=DataConfig())
+    # train_set = VCTKDataset(vctk, "train")
 
     # for i in tqdm(range(len(train_set))):
     #     ssl, spec, wav_norm, spk = train_set[i]
@@ -226,7 +226,7 @@ def iter_train_set():
     dm = VCTKDataModule(config=DataConfig())
     dm.setup("fit")
     for batch in tqdm(dm.train_dataloader()):
-        print(batch[0].shape, batch[1].shape, batch[2].shape, batch[3].shape)
+        print(batch[0].shape, batch[1].shape, batch[2].shape)
 
 
 class VCTKCollate:
@@ -277,7 +277,7 @@ class VCTKCollate:
         wav_seglen = spec_seglen * self.config.hop_length
 
         spec_padded, ids_slice = vits.rand_spec_segments(spec_padded, spec_lengths, spec_seglen)  # type:ignore
-        wav_padded = vits.slice_segments(wav_padded, ids_slice * self.hps.data.hop_length, wav_seglen)  # type:ignore
+        wav_padded = vits.slice_segments(wav_padded, ids_slice * self.config.hop_length, wav_seglen)  # type:ignore
         c_padded = vits.slice_segments(c_padded, ids_slice, spec_seglen)[:, :, :-1]  # type:ignore
 
         spec_padded = spec_padded[:, :, :-1]
