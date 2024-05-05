@@ -11,6 +11,7 @@ import speaker_encoder.audio
 
 import os
 import random
+from glob import glob
 
 import librosa
 import numpy as np
@@ -148,6 +149,35 @@ def preprocess_spk():
 
         os.makedirs(os.path.join(out_dir, speaker), exist_ok=True)
         torch.save(spk, save_path)
+
+
+@cli.command()
+def preprocess_ssl():
+    config = DataConfig()
+
+    in_dir = config.vctk_16k_dir
+    out_dir = config.preprocess_ssl_dir
+    sr = 16000
+
+    model = load_wavlm().cuda()  # type:ignore
+    filenames = glob(f"{in_dir}/*/*.wav", recursive=True)
+
+    for filename in tqdm(filenames):
+        wav_name = os.path.basename(filename)
+        speaker = wav_name[:4]
+
+        save_dir = os.path.join(out_dir, speaker)
+        save_path = os.path.join(save_dir, wav_name.replace(".wav", ".pt"))
+        if os.path.exists(save_path):
+            continue
+
+        os.makedirs(save_dir, exist_ok=True)
+        wav, _ = librosa.load(filename, sr=sr)
+        wav = torch.from_numpy(wav).unsqueeze_(0).cuda()
+        ssl_features = calc_ssl_features(model, wav)
+        torch.save(ssl_features.cpu(), save_path)
+
+    print("Done!")
 
 
 def mel_resize(mel, height):  # 68-92

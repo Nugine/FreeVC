@@ -14,6 +14,8 @@ class DataConfig:
     pretrained_spk_ckpt_path: str = "speaker_encoder/ckpt/pretrained_bak_5805000.pt"
     preprocess_spk_dir: str = "./data/spk"
 
+    preprocess_ssl_dir: str = "./data/ssl"
+
     use_sr_augment: bool = True
     use_pretrained_spk: bool = True
 
