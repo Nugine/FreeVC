@@ -136,13 +136,18 @@ def preprocess_spk():
 
     for wav_name in tqdm(wav_names):
         speaker = wav_name[:4]
+        save_path = os.path.join(out_dir, speaker, wav_name.replace(".wav", ".pt"))
+
+        if os.path.exists(save_path):
+            continue
+
         wav_path = os.path.join(in_dir, speaker, wav_name)
         spk_wav = speaker_encoder.audio.preprocess_wav(wav_path)
         spk = spk_encoder.embed_utterance(spk_wav)
         spk = torch.from_numpy(spk)
 
         os.makedirs(os.path.join(out_dir, speaker), exist_ok=True)
-        torch.save(spk, os.path.join(out_dir, speaker, wav_name.replace(".wav", ".pt")))
+        torch.save(spk, save_path)
 
 
 def mel_resize(mel, height):  # 68-92
