@@ -3,10 +3,10 @@ dev:
     just lint
 
 fmt:
-    python3 -m ruff format **/*.py
+    python3 -m ruff format
 
 lint:
-    python3 -m ruff check **/*.py
+    python3 -m ruff check
 
 gen-requirements:
     #!/bin/bash -ex
