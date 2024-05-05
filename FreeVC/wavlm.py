@@ -41,8 +41,3 @@ def load_wavlm():
     model = WavLMModel.from_pretrained(os.path.dirname(bin_path), state_dict=state_dict)
     assert isinstance(model, WavLMModel)
     return model
-
-
-@torch.no_grad()
-def calc_ssl_features(model: WavLMModel, wav):
-    return model(wav.unsqueeze(0)).last_hidden_state.transpose(1, 2)

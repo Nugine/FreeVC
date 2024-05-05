@@ -1,7 +1,9 @@
 from .env import cli
 from .config import DataConfig
 from .utils import read_txt_lines
-from .wavlm import load_wavlm, calc_ssl_features
+from .wavlm import load_wavlm
+from .hifigan import load_hifigan
+from .mel_processing import mel_spectrogram_torch, spectrogram_torch
 
 import os
 import random
@@ -16,6 +18,8 @@ from torch.utils.data import Dataset, DataLoader
 import torchaudio
 import torch.nn.functional as F
 import torch
+import torchvision.transforms.v2
+import torchaudio.transforms
 
 
 def downsample(args):
@@ -112,6 +116,16 @@ def generate_split():
     print("Done!")
 
 
+def mel_resize(mel, height):  # 68-92
+    tgt = torchvision.transforms.v2.functional.resize(mel, [height, mel.size(-1)])
+    if height >= mel.size(-2):
+        return tgt[:, : mel.size(-2), :]
+    else:
+        silence = tgt[:, -1:, :].repeat(1, mel.size(-2) - height, 1)
+        silence += torch.randn_like(silence) / 10
+        return torch.cat((tgt, silence), 1)
+
+
 class VCTK:
     def __init__(self, *, config: DataConfig) -> None:
         super().__init__()
@@ -124,11 +138,66 @@ class VCTK:
             self.audio_paths[split] = read_txt_lines(split_path)
 
         self.wavlm = load_wavlm()
+        self.wavlm = self.wavlm.cuda()  # type:ignore
+
+        if self.config.use_sr_augment:
+            self.hifigan, self.hifigan_config = load_hifigan()
+            self.hifigan = self.hifigan.cuda()  # type:ignore
+            self.resample_22kto16k = torchaudio.transforms.Resample(orig_freq=22050, new_freq=16000)
+            self.resample_22kto16k = self.resample_22kto16k.cuda()  # type:ignore
 
     def load_sample(self, path):
-        wav, _ = torchaudio.load(os.path.join(self.config.vctk_16k_dir, path))
+        wav_16k, sr = torchaudio.load(os.path.join(self.config.vctk_16k_dir, path))
+        assert sr == 16000
+        wav_16k = wav_16k.cuda()
 
-        ssl = calc_ssl_features(self.wavlm, wav)
+        wav_norm = wav_16k / self.config.max_wav_value
+
+        spec = spectrogram_torch(
+            wav_norm,
+            n_fft=self.config.filter_length,
+            sampling_rate=16000,
+            hop_size=self.config.hop_length,
+            win_size=self.config.win_length,
+            center=False,
+        ).squeeze_(0)
+
+        if self.config.use_sr_augment:
+            h = random.randint(68, 92)
+            wav_22k, sr = torchaudio.load(os.path.join(self.config.vctk_22k_dir, path))
+            assert sr == 22050
+            wav_22k = wav_22k.cuda()
+            wav_sr = self.sr_augment(wav_22k, h)
+            ssl = self.calc_ssl_features(wav_sr)
+        else:
+            ssl = self.calc_ssl_features(wav_16k)
+
+        return wav_norm, spec, ssl
+
+    @torch.no_grad()
+    def calc_ssl_features(self, wav):
+        return self.wavlm(wav).last_hidden_state.transpose(1, 2)
+
+    @torch.no_grad()
+    def sr_augment(self, wav, h):
+        mel = mel_spectrogram_torch(
+            wav,
+            n_fft=self.hifigan_config.n_fft,
+            num_mels=self.hifigan_config.num_mels,
+            sampling_rate=self.hifigan_config.sampling_rate,
+            hop_size=self.hifigan_config.hop_size,
+            win_size=self.hifigan_config.win_size,
+            fmin=self.hifigan_config.fmin,
+            fmax=self.hifigan_config.fmax,
+        )
+
+        mel_rs = mel_resize(mel, h)
+
+        wav_rs = self.hifigan(mel_rs)[0]
+        assert wav_rs.shape[0] == 1
+
+        wav_rs = self.resample_22kto16k(wav_rs)
+        return wav_rs
 
 
 class VCTKDataset(Dataset):
@@ -142,6 +211,15 @@ class VCTKDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.vctk.load_sample(self.audio_paths[idx])
+
+
+@cli.command()
+def iter_train_set():
+    vctk = VCTK(config=DataConfig())
+    train_set = VCTKDataset(vctk, "train")
+
+    for i in tqdm(range(len(train_set))):
+        wav_norm, spec, ssl = train_set[i]
 
 
 class VCTKCollate:
