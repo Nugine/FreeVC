@@ -1,2 +1,2 @@
 #!/bin/bash -e
-python -m dl-template "$@"
+python -m FreeVC "$@"
