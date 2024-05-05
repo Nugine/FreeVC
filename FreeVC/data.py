@@ -132,13 +132,8 @@ class VCTK:
 
         self.wavlm = load_wavlm()
 
-    def load_wav_16k(self, path):
+    def load_sample(self, path):
         wav, _ = torchaudio.load(os.path.join(self.vctk_16k_dir, path))
-        return wav
-
-    def load_wav_22k(self, path):
-        wav, _ = torchaudio.load(os.path.join(self.vctk_22k_dir, path))
-        return wav
 
 
 class VCTKDataset(Dataset):
@@ -151,11 +146,7 @@ class VCTKDataset(Dataset):
         return len(self.audio_paths)
 
     def __getitem__(self, idx):
-        wav = self.vctk.load_wav_16k(self.audio_paths[idx])
-
-        ssl = calc_ssl_features(self.vctk.wavlm, wav)
-
-        return {"wav": wav, "ssl": ssl}
+        return self.vctk.load_sample(self.audio_paths[idx])
 
 
 class VCTKCollate:
