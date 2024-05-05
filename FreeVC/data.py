@@ -1,6 +1,7 @@
 from .env import cli
 from .config import get_hard_config
 from .utils import read_txt_lines
+from .wavlm import load_wavlm, calc_ssl_features
 
 import os
 import random
@@ -114,23 +115,22 @@ def generate_split():
     print("Done!")
 
 
-class VCTKDataset(Dataset):
-    def __init__(self, *, split: str):
+class VCTK:
+    def __init__(self, *, use_sr_augment: bool) -> None:
         super().__init__()
 
         config = get_hard_config()
         self.vctk_16k_dir = config.dataset.vctk_16k_dir
         self.vctk_22k_dir = config.dataset.vctk_22k_dir
 
-        split_path = os.path.join(config.dataset.split_dir, f"{split}.txt")
-        self.audio_paths = read_txt_lines(split_path)
+        self.use_sr_augment = use_sr_augment
 
-    def __len__(self):
-        return len(self.audio_paths)
+        self.audio_paths = {}
+        for split in ["train", "val", "test"]:
+            split_path = os.path.join(config.dataset.split_dir, f"{split}.txt")
+            self.audio_paths[split] = read_txt_lines(split_path)
 
-    def __getitem__(self, idx):
-        wav_16k = self.load_wav_16k(self.audio_paths[idx])
-        return {"wav": wav_16k}
+        self.wavlm = load_wavlm()
 
     def load_wav_16k(self, path):
         wav, _ = torchaudio.load(os.path.join(self.vctk_16k_dir, path))
@@ -139,6 +139,23 @@ class VCTKDataset(Dataset):
     def load_wav_22k(self, path):
         wav, _ = torchaudio.load(os.path.join(self.vctk_22k_dir, path))
         return wav
+
+
+class VCTKDataset(Dataset):
+    def __init__(self, vctk: VCTK, split: str):
+        super().__init__()
+        self.vctk = vctk
+        self.audio_paths = vctk.audio_paths[split]
+
+    def __len__(self):
+        return len(self.audio_paths)
+
+    def __getitem__(self, idx):
+        wav = self.vctk.load_wav_16k(self.audio_paths[idx])
+
+        ssl = calc_ssl_features(self.vctk.wavlm, wav)
+
+        return {"wav": wav, "ssl": ssl}
 
 
 class VCTKCollate:
@@ -168,16 +185,17 @@ class VCTKCollate:
 
 
 class VCTKDataModule(LightningDataModule):
-    def __init__(self, *, batch_size: int, num_workers: int):
+    def __init__(self, *, batch_size: int, num_workers: int, use_sr_augment: bool):
         super().__init__()
 
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-    def setup(self, stage: str) -> None:
-        self.train_set = VCTKDataset(split="train")
-        self.val_set = VCTKDataset(split="val")
-        self.test_set = VCTKDataset(split="test")
+    def setup(self, stage: str):
+        self.vctk = VCTK(use_sr_augment=False)
+        self.train_set = VCTKDataset(self.vctk, "train")
+        self.val_set = VCTKDataset(self.vctk, "val")
+        self.test_set = VCTKDataset(self.vctk, "test")
 
     def _create_dataloader(self, dataset, shuffle: bool):
         return DataLoader(
