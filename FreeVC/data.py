@@ -250,7 +250,7 @@ class VCTK:
             ssl = calc_ssl_features(self.wavlm, wav_sr).squeeze_(0)
         else:
             ssl_path = os.path.join(self.config.preprocess_ssl_dir, path.replace(".wav", ".pt"))
-            ssl = torch.load(ssl_path).cuda()
+            ssl = torch.load(ssl_path).cuda().squeeze_(0)
 
         return ssl, spec, wav_norm, spk
 
