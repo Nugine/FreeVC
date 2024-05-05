@@ -8,6 +8,8 @@ class DatasetConfig:
     vctk_16k_dir: str = "./data/vctk-16k"
     vctk_22k_dir: str = "./data/vctk-22k"
 
+    split_dir: str = "./data/split"
+
 
 @dataclass
 class Config:

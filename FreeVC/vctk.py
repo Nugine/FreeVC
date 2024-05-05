@@ -2,6 +2,7 @@ from .env import cli
 from .config import get_config
 
 import os
+import random
 
 import librosa
 import numpy as np
@@ -66,5 +67,42 @@ def resample_vctk():
     with tqdm(total=len(tasks)) as pbar:
         for _ in pool.imap_unordered(downsample, tasks):
             pbar.update()
+
+    print("Done!")
+
+
+@cli.command()
+def generate_split():
+    config = get_config()
+
+    src_dir = config.dataset.vctk_16k_dir
+    split_dir = config.dataset.split_dir
+
+    train = []
+    val = []
+    test = []
+
+    for speaker in os.listdir(src_dir):
+        wav_names = os.listdir(os.path.join(src_dir, speaker))
+        random.shuffle(wav_names)
+        train.extend(wav_names[2:-10])
+        val.extend(wav_names[:2])
+        test.extend(wav_names[-10:])
+
+    random.shuffle(train)
+    random.shuffle(val)
+    random.shuffle(test)
+
+    train_list = os.path.join(split_dir, "train.txt")
+    val_list = os.path.join(split_dir, "val.txt")
+    test_list = os.path.join(split_dir, "test.txt")
+
+    os.makedirs(split_dir, exist_ok=True)
+
+    for list_path, wav_names in zip([train_list, val_list, test_list], [train, val, test]):
+        with open(list_path, "w") as f:
+            for wav_name in wav_names:
+                speaker = wav_name[:4]
+                f.write(f"{speaker}/{wav_name}" + "\n")
 
     print("Done!")
