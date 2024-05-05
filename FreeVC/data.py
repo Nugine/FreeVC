@@ -115,7 +115,7 @@ def generate_split():
 
 
 class VCTKDataset(Dataset):
-    def __init__(self, split: str):
+    def __init__(self, *, split: str):
         super().__init__()
 
         config = get_hard_config()
@@ -167,13 +167,35 @@ class VCTKCollate:
 #     print(batch["wav"].shape)
 
 
-# class VCTKDataModule(LightningDataModule):
-#     def __init__(self):
-#         super().__init__()
+class VCTKDataModule(LightningDataModule):
+    def __init__(self, *, batch_size: int, num_workers: int):
+        super().__init__()
 
-#     def setup(self, stage: str):
-#         self.audio_paths = {}
-#         config = get_hard_config()
-#         for split in ["train", "val", "test"]:
-#             split_path = os.path.join(config.dataset.split_dir, f"{split}.txt")
-#             self.audio_paths[split] = read_txt_lines(split_path)
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+
+    def setup(self, stage: str) -> None:
+        self.train_set = VCTKDataset(split="train")
+        self.val_set = VCTKDataset(split="val")
+        self.test_set = VCTKDataset(split="test")
+
+    def _create_dataloader(self, dataset, shuffle: bool):
+        return DataLoader(
+            dataset,
+            shuffle=shuffle,
+            collate_fn=VCTKCollate(),
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+        )
+
+    def train_dataloader(self):
+        return self._create_dataloader(self.train_set, shuffle=True)
+
+    def val_dataloader(self):
+        return self._create_dataloader(self.val_set, shuffle=False)
+
+    def test_dataloader(self):
+        return self._create_dataloader(self.test_set, shuffle=False)
+
+    def predict_dataloader(self):
+        return self._create_dataloader(self.test_set, shuffle=False)
