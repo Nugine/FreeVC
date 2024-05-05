@@ -180,6 +180,68 @@ def preprocess_ssl():
     print("Done!")
 
 
+@cli.command()
+@torch.no_grad()
+def preprocess_sr(minh: int = 68, maxh: int = 92):
+    assert 68 <= minh <= maxh <= 92
+
+    config = DataConfig()
+
+    in_dir = config.vctk_22k_dir
+    out_dir = config.preprocess_sr_dir
+
+    wavlm = load_wavlm()
+    vocoder, vocoder_config = load_hifigan()
+
+    wavlm = wavlm.cuda()  # type:ignore
+    vocoder = vocoder.cuda()  # type:ignore
+
+    mel_spectrogram = torchaudio.transforms.MelSpectrogram(
+        n_fft=vocoder_config.n_fft,
+        n_mels=vocoder_config.num_mels,
+        sample_rate=vocoder_config.sampling_rate,
+        win_length=vocoder_config.win_size,
+        hop_length=vocoder_config.hop_size,
+        f_min=vocoder_config.fmin,
+        f_max=vocoder_config.fmax,
+    ).cuda()
+    resample = torchaudio.transforms.Resample(orig_freq=vocoder_config.sampling_rate, new_freq=16000).cuda()
+
+    filenames = glob(f"{in_dir}/*/*.wav", recursive=True)
+
+    with tqdm(total=len(filenames) * (maxh - minh + 1)) as pbar:
+        for filename in filenames:
+            wav_name = os.path.basename(filename)
+            speaker = wav_name[:4]
+
+            odir = os.path.join(out_dir, speaker)
+            os.makedirs(odir, exist_ok=True)
+
+            wav, sr = torchaudio.load(filename)
+            assert sr == vocoder_config.sampling_rate
+            wav = wav.cuda()
+
+            mel = mel_spectrogram(wav)
+
+            for h in range(minh, maxh + 1):
+                ssl_path = os.path.join(odir, wav_name.replace(".wav", f"_{h}.pt"))
+                wav_path = os.path.join(odir, wav_name.replace(".wav", f"_{h}.wav"))
+
+                if not os.path.exists(wav_path):
+                    mel_rs = mel_resize(mel, h)
+
+                    wav_rs = vocoder(mel_rs)[0]
+                    assert wav_rs.shape[0] == 1
+
+                    wav_rs = resample(wav_rs)
+
+                    ssl_features = calc_ssl_features(wavlm, wav_rs)
+                    torch.save(ssl_features.cpu(), ssl_path)
+                    wavfile.write(wav_path, 16000, wav_rs.cpu().numpy().squeeze(0))
+
+                pbar.update()
+
+
 def mel_resize(mel, height):  # 68-92
     tgt = torchvision.transforms.v2.functional.resize(mel, [height, mel.size(-1)])
     if height >= mel.size(-2):
@@ -193,6 +255,28 @@ def mel_resize(mel, height):  # 68-92
 @torch.no_grad()
 def calc_ssl_features(wavlm, wav):
     return wavlm(wav).last_hidden_state.transpose(1, 2)
+
+
+@torch.no_grad()
+def sr_augment(wav, h, hifigan, hifigan_config, resample):
+    mel = mel_spectrogram_torch(
+        wav,
+        n_fft=hifigan_config.n_fft,
+        num_mels=hifigan_config.num_mels,
+        sampling_rate=hifigan_config.sampling_rate,
+        hop_size=hifigan_config.hop_size,
+        win_size=hifigan_config.win_size,
+        fmin=hifigan_config.fmin,
+        fmax=hifigan_config.fmax,
+    )
+
+    mel_rs = mel_resize(mel, h)
+
+    wav_rs = hifigan(mel_rs)[0]
+    assert wav_rs.shape[0] == 1
+
+    wav_rs = resample(wav_rs)
+    return wav_rs
 
 
 class VCTK:
@@ -218,6 +302,7 @@ class VCTK:
         if self.config.use_pretrained_spk:
             self.spk_encoder = SpeakerEncoder(self.config.pretrained_spk_ckpt_path)
 
+    @torch.no_grad()
     def load_sample(self, path):
         wav_16k, sr = torchaudio.load(os.path.join(self.config.vctk_16k_dir, path))
         assert sr == 16000
@@ -246,34 +331,13 @@ class VCTK:
             wav_22k, sr = torchaudio.load(os.path.join(self.config.vctk_22k_dir, path))
             assert sr == 22050
             wav_22k = wav_22k.cuda()
-            wav_sr = self.sr_augment(wav_22k, h)
+            wav_sr = sr_augment(wav_22k, h, self.hifigan, self.hifigan_config, self.resample_22kto16k)
             ssl = calc_ssl_features(self.wavlm, wav_sr).squeeze_(0)
         else:
             ssl_path = os.path.join(self.config.preprocess_ssl_dir, path.replace(".wav", ".pt"))
             ssl = torch.load(ssl_path).cuda().squeeze_(0)
 
         return ssl, spec, wav_norm, spk
-
-    @torch.no_grad()
-    def sr_augment(self, wav, h):
-        mel = mel_spectrogram_torch(
-            wav,
-            n_fft=self.hifigan_config.n_fft,
-            num_mels=self.hifigan_config.num_mels,
-            sampling_rate=self.hifigan_config.sampling_rate,
-            hop_size=self.hifigan_config.hop_size,
-            win_size=self.hifigan_config.win_size,
-            fmin=self.hifigan_config.fmin,
-            fmax=self.hifigan_config.fmax,
-        )
-
-        mel_rs = mel_resize(mel, h)
-
-        wav_rs = self.hifigan(mel_rs)[0]
-        assert wav_rs.shape[0] == 1
-
-        wav_rs = self.resample_22kto16k(wav_rs)
-        return wav_rs
 
 
 class VCTKDataset(Dataset):
