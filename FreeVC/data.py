@@ -17,7 +17,6 @@ from tqdm.auto import tqdm
 from lightning import LightningDataModule
 from torch.utils.data import Dataset, DataLoader
 import torchaudio
-import torch.nn.functional as F
 import torch
 import torchvision.transforms.v2
 import torchaudio.transforms
