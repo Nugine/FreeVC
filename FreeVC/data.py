@@ -220,8 +220,13 @@ def iter_train_set():
     vctk = VCTK(config=DataConfig())
     train_set = VCTKDataset(vctk, "train")
 
-    for i in tqdm(range(len(train_set))):
-        ssl, spec, wav_norm, spk = train_set[i]
+    # for i in tqdm(range(len(train_set))):
+    #     ssl, spec, wav_norm, spk = train_set[i]
+
+    dm = VCTKDataModule(config=DataConfig())
+    dm.setup("fit")
+    for batch in tqdm(dm.train_dataloader()):
+        print(batch[0].shape, batch[1].shape, batch[2].shape, batch[3].shape)
 
 
 class VCTKCollate:
