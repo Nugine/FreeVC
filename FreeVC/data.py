@@ -6,6 +6,9 @@ from .hifigan import load_hifigan
 from .mel_processing import mel_spectrogram_torch, spectrogram_torch
 from . import vits
 
+from speaker_encoder.voice_encoder import SpeakerEncoder
+import speaker_encoder.audio
+
 import os
 import random
 
@@ -146,9 +149,19 @@ class VCTK:
             self.resample_22kto16k = torchaudio.transforms.Resample(orig_freq=22050, new_freq=16000)
             self.resample_22kto16k = self.resample_22kto16k.cuda()  # type:ignore
 
+        if self.config.use_pretrained_spk:
+            self.spk_encoder = SpeakerEncoder(self.config.pretrained_spk_ckpt_path)
+
     def load_sample(self, path):
         wav_16k, sr = torchaudio.load(os.path.join(self.config.vctk_16k_dir, path))
         assert sr == 16000
+
+        if self.config.use_pretrained_spk:
+            spk_wav = speaker_encoder.audio.preprocess_wav(wav_16k.squeeze(0).numpy(), 16000)
+            spk = self.spk_encoder.embed_utterance(spk_wav)
+        else:
+            spk = None
+
         wav_16k = wav_16k.cuda()
 
         wav_norm = wav_16k / self.config.max_wav_value
@@ -171,8 +184,6 @@ class VCTK:
             ssl = self.calc_ssl_features(wav_sr).squeeze_(0)
         else:
             ssl = self.calc_ssl_features(wav_16k).squeeze_(0)
-
-        spk = None  # TODO
 
         return ssl, spec, wav_norm, spk
 
