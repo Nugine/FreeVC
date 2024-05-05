@@ -1,5 +1,5 @@
 from .env import cli
-from .config import get_hard_config
+from .config import DataConfig
 from .utils import read_txt_lines
 from .wavlm import load_wavlm, calc_ssl_features
 
@@ -53,13 +53,10 @@ def downsample(args):
 
 @cli.command()
 def resample_vctk():
-    config = get_hard_config()
+    config = DataConfig()
 
-    in_dir = config.dataset.vctk_dir
-    target = [
-        (config.dataset.vctk_16k_dir, 16000),
-        (config.dataset.vctk_22k_dir, 22050),
-    ]
+    in_dir = config.vctk_dir
+    target = [(config.vctk_16k_dir, 16000), (config.vctk_22k_dir, 22050)]
 
     pool = Pool(processes=cpu_count() - 2)
 
@@ -80,10 +77,10 @@ def resample_vctk():
 
 @cli.command()
 def generate_split():
-    config = get_hard_config()
+    config = DataConfig()
 
-    src_dir = config.dataset.vctk_16k_dir
-    split_dir = config.dataset.split_dir
+    src_dir = config.vctk_16k_dir
+    split_dir = config.split_dir
 
     train = []
     val = []
@@ -116,24 +113,22 @@ def generate_split():
 
 
 class VCTK:
-    def __init__(self, *, use_sr_augment: bool) -> None:
+    def __init__(self, *, config: DataConfig) -> None:
         super().__init__()
 
-        config = get_hard_config()
-        self.vctk_16k_dir = config.dataset.vctk_16k_dir
-        self.vctk_22k_dir = config.dataset.vctk_22k_dir
-
-        self.use_sr_augment = use_sr_augment
+        self.config = config
 
         self.audio_paths = {}
         for split in ["train", "val", "test"]:
-            split_path = os.path.join(config.dataset.split_dir, f"{split}.txt")
+            split_path = os.path.join(config.split_dir, f"{split}.txt")
             self.audio_paths[split] = read_txt_lines(split_path)
 
         self.wavlm = load_wavlm()
 
     def load_sample(self, path):
-        wav, _ = torchaudio.load(os.path.join(self.vctk_16k_dir, path))
+        wav, _ = torchaudio.load(os.path.join(self.config.vctk_16k_dir, path))
+
+        ssl = calc_ssl_features(self.wavlm, wav)
 
 
 class VCTKDataset(Dataset):
@@ -164,37 +159,23 @@ class VCTKCollate:
         return {"wav": torch.stack(wavs)}
 
 
-# @cli.command()
-# def show_vctk_dataset():
-#     dataset = VCTKDataset("train")
-#     print(len(dataset))
-#     print(dataset[0])
-
-#     dataloader = DataLoader(dataset, batch_size=4, shuffle=True, collate_fn=VCTKCollate())
-#     batch = next(iter(dataloader))
-#     print(batch["wav"].shape)
-
-
 class VCTKDataModule(LightningDataModule):
-    def __init__(self, *, batch_size: int, num_workers: int, use_sr_augment: bool):
+    def __init__(self, *, config: DataConfig):
         super().__init__()
-
-        self.batch_size = batch_size
-        self.num_workers = num_workers
+        self.config = config
 
     def setup(self, stage: str):
-        self.vctk = VCTK(use_sr_augment=False)
+        self.vctk = VCTK(config=self.config)
         self.train_set = VCTKDataset(self.vctk, "train")
         self.val_set = VCTKDataset(self.vctk, "val")
         self.test_set = VCTKDataset(self.vctk, "test")
 
-    def _create_dataloader(self, dataset, shuffle: bool):
+    def _create_dataloader(self, dataset, *, shuffle: bool):
         return DataLoader(
             dataset,
             shuffle=shuffle,
             collate_fn=VCTKCollate(),
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
+            batch_size=self.config.batch_size,
         )
 
     def train_dataloader(self):

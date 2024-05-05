@@ -45,4 +45,4 @@ def load_wavlm():
 
 @torch.no_grad()
 def calc_ssl_features(model: WavLMModel, wav):
-    return model(wav).last_hidden_state.transpose(1, 2)
+    return model(wav.unsqueeze(0)).last_hidden_state.transpose(1, 2)

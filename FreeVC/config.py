@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class DatasetConfig:
+class DataConfig:
     vctk_dir: str = "./data/VCTK"
 
     vctk_16k_dir: str = "./data/vctk-16k"
@@ -10,14 +10,6 @@ class DatasetConfig:
 
     split_dir: str = "./data/split"
 
+    use_sr_augment: bool = True
 
-@dataclass
-class Config:
-    dataset: DatasetConfig = DatasetConfig()
-
-
-_config = Config()
-
-
-def get_hard_config():
-    return _config
+    batch_size: int = 32
