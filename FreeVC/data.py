@@ -378,7 +378,7 @@ class VCTKCollate:
             row = batch[ids_sorted_decreasing[i]]
 
             c = row[0]
-            print("c", c.shape)
+            # print("c", c.shape)
             c_padded[i, :, : c.size(1)] = c
 
             spec = row[1]
@@ -424,6 +424,7 @@ class VCTKDataModule(LightningDataModule):
             shuffle=shuffle,
             collate_fn=VCTKCollate(self.config),
             batch_size=self.config.batch_size,
+            num_workers=self.config.num_workers,
         )
 
     def train_dataloader(self):

@@ -21,6 +21,7 @@ class DataConfig:
     use_pretrained_spk: bool = True
 
     batch_size: int = 32
+    num_workers: int = 16
 
     max_wav_value: float = 32768.0
     filter_length: int = 1280
