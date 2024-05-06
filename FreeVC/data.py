@@ -199,10 +199,12 @@ def preprocess_sr(
     wavlm = load_wavlm()
     hifigan, hifigan_config = load_hifigan()
 
-    wavlm = wavlm.cuda()  # type:ignore
-    hifigan = hifigan.cuda()  # type:ignore
+    device = torch.device(f"cuda:{cuda_rank}") if cuda_rank is not None else torch.device("cuda")
 
-    resample = torchaudio.transforms.Resample(orig_freq=hifigan_config.sampling_rate, new_freq=16000).cuda()
+    wavlm = wavlm.to(device)  # type:ignore
+    hifigan = hifigan.to(device)  # type:ignore
+
+    resample = torchaudio.transforms.Resample(orig_freq=hifigan_config.sampling_rate, new_freq=16000).to(device)
 
     filenames = glob(f"{in_dir}/*/*.wav", recursive=True)
     filenames.sort()
@@ -221,7 +223,7 @@ def preprocess_sr(
 
             wav, sr = torchaudio.load(filename)
             assert sr == hifigan_config.sampling_rate
-            wav = wav.cuda()
+            wav = wav.to(device)
 
             mel = mel_spectrogram_torch(
                 wav,
