@@ -192,7 +192,7 @@ class SynthesizerTrn(nn.Module):
 
         return o, ids_slice, spec_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
 
-    def infer(self, c, g=None, mel=None, c_lengths=None):
+    def infer(self, c, *, g=None, mel=None, c_lengths=None):
         if c_lengths is None:
             c_lengths = (torch.ones(c.size(0)) * c.size(-1)).to(c.device)
         if not self.use_pretrained_spk:

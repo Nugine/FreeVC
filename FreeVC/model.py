@@ -53,7 +53,7 @@ class FreeVCModel(LightningModule):
             fmax=self.config.data.mel_fmax,
         )
 
-        y_hat = self.net_g.infer(ssl, g, mel)
+        y_hat = self.net_g.infer(ssl, g=g, mel=mel)
         return y_hat
 
     def training_step(self, batch, batch_idx):
@@ -140,13 +140,20 @@ class MyLightningCLI(LightningCLI):
 
 
 @cli.command()
+@torch.no_grad()
 def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
     model = FreeVCModel.load_from_checkpoint(ckpt_path)
 
-    wavlm = load_wavlm()
+    model.net_g.load_state_dict(torch.load("./ckpt/freevc/freevc.pth"))
+
+    model = model.cuda()
+
+    wavlm = load_wavlm().cuda()  # type:ignore
 
     if model.config.data.use_pretrained_spk:
         spk_encoder = SpeakerEncoder(model.config.data.pretrained_spk_ckpt_path)
+
+    print("Model loaded")
 
     wav_src, _ = librosa.load(src_path, sr=model.config.data.sampling_rate)
     wav_src = torch.from_numpy(wav_src).unsqueeze(0).cuda()
@@ -158,7 +165,7 @@ def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
     if model.config.data.use_pretrained_spk:
         g_tgt = spk_encoder.embed_utterance(wav_tgt)
         g_tgt = torch.from_numpy(g_tgt).unsqueeze(0).cuda()
-        audio = model.net_g.infer(ssl, g_tgt)
+        audio = model.net_g.infer(ssl, g=g_tgt)
     else:
         wav_tgt = torch.from_numpy(wav_tgt).unsqueeze(0).cuda()
         mel_tgt = mel_spectrogram_torch(
@@ -171,10 +178,12 @@ def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
             fmin=model.config.data.mel_fmin,
             fmax=model.config.data.mel_fmax,
         )
-        audio = model.net_g.infer(ssl, mel_tgt)
+        audio = model.net_g.infer(ssl, mel=mel_tgt)
 
     audio = audio.squeeze().cpu().float().numpy()
     wavfile.write(save_path, rate=model.config.data.sampling_rate, data=audio)
+
+    print("Done!")
 
 
 if __name__ == "__main__":
