@@ -17,7 +17,7 @@ class DataConfig:
     preprocess_ssl_dir: str = "./data/ssl"
     preprocess_sr_dir: str = "./data/sr"
 
-    use_sr_augment: bool = True
+    use_sr_augment: bool = False
     use_pretrained_spk: bool = True
 
     batch_size: int = 32
@@ -34,7 +34,7 @@ class DataConfig:
 
     max_speclen: int = 128
 
-    partial_ratio: float = 1
+    partial_ratio: float = 0.1
     sort_by_name: bool = False
 
 
