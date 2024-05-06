@@ -92,7 +92,7 @@ class FreeVCModel(L.LightningModule):
         opt_d.step()
 
         y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.net_d(y, y_hat)
-        loss_mel = l1_loss(y_mel, y_hat_mel) * self.config.train.c_mel
+        loss_mel = l1_loss(y_mel, y_hat_mel) * self.config.train.c_mel  # reduction???
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * self.config.train.c_kl
         loss_fm = feature_loss(fmap_r, fmap_g)
         loss_gen, losses_gen = generator_loss(y_d_hat_g)

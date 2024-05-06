@@ -20,7 +20,7 @@ class DataConfig:
     use_sr_augment: bool = True
     use_pretrained_spk: bool = True
 
-    batch_size: int = 64
+    batch_size: int = 32
 
     max_wav_value: float = 32768.0
     filter_length: int = 1280
