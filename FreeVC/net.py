@@ -1,42 +1,45 @@
 from . import vits
 from .env import cli
-from .config import ModelConfig, DataConfig
+from .config import Config
 
 
 import torch
 import torch.nn as nn
 
 
-@cli.command()
-def show_net():
-    data_config = DataConfig()
-    model_config = ModelConfig()
+def load_net(config: Config):
     net_g = SynthesizerTrn(
-        spec_channels=data_config.filter_length // 2 + 1,
-        segment_size=model_config.segment_size // data_config.hop_length,
-        inter_channels=model_config.inter_channels,
-        hidden_channels=model_config.hidden_channels,
-        filter_channels=model_config.filter_channels,
-        n_heads=model_config.n_heads,
-        n_layers=model_config.n_layers,
-        kernel_size=model_config.kernel_size,
-        p_dropout=model_config.p_dropout,
-        resblock=model_config.resblock,
-        resblock_kernel_sizes=model_config.resblock_kernel_sizes,
-        resblock_dilation_sizes=model_config.resblock_dilation_sizes,
-        upsample_rates=model_config.upsample_rates,
-        upsample_initial_channel=model_config.upsample_initial_channel,
-        upsample_kernel_sizes=model_config.upsample_kernel_sizes,
-        gin_channels=model_config.gin_channels,
-        ssl_dim=model_config.ssl_dim,
-        use_pretrained_spk=model_config.use_pretrained_spk,
+        spec_channels=config.data.filter_length // 2 + 1,
+        segment_size=config.net.segment_size // config.data.hop_length,
+        inter_channels=config.net.inter_channels,
+        hidden_channels=config.net.hidden_channels,
+        filter_channels=config.net.filter_channels,
+        n_heads=config.net.n_heads,
+        n_layers=config.net.n_layers,
+        kernel_size=config.net.kernel_size,
+        p_dropout=config.net.p_dropout,
+        resblock=config.net.resblock,
+        resblock_kernel_sizes=config.net.resblock_kernel_sizes,
+        resblock_dilation_sizes=config.net.resblock_dilation_sizes,
+        upsample_rates=config.net.upsample_rates,
+        upsample_initial_channel=config.net.upsample_initial_channel,
+        upsample_kernel_sizes=config.net.upsample_kernel_sizes,
+        gin_channels=config.net.gin_channels,
+        ssl_dim=config.net.ssl_dim,
+        use_pretrained_spk=config.net.use_pretrained_spk,
     )
     net_d = vits.MultiPeriodDiscriminator(
-        use_spectral_norm=model_config.use_spectral_norm,
+        use_spectral_norm=config.net.use_spectral_norm,
     )
+    return (net_g, net_d)
+
+
+@cli.command()
+def show_net():
+    config = Config()
+    net_g, net_d = load_net(config)
     print(net_g)
     print(net_d)
-    return (net_g, net_d)
 
 
 class SpeakerEncoder(nn.Module):

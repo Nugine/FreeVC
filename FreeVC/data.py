@@ -18,12 +18,12 @@ import numpy as np
 from scipy.io import wavfile
 from multiprocessing import Pool, cpu_count
 from tqdm.auto import tqdm
-from lightning import LightningDataModule
 from torch.utils.data import Dataset, DataLoader
 import torchaudio
 import torch
 import torchvision.transforms.v2
 import torchaudio.transforms
+from lightning import LightningDataModule
 
 
 def downsample(args):
@@ -359,26 +359,6 @@ class VCTKDataset(Dataset):
         return self.vctk.load_sample(self.audio_paths[idx])
 
 
-@cli.command()
-def iter_train_set():
-    vctk = VCTK(config=DataConfig())
-    train_set = VCTKDataset(vctk, "train")
-
-    # print(vctk.load_sample("p254/p254_008.wav"))
-
-    for i in tqdm(range(len(train_set))):
-        ssl, spec, wav_norm, spk = train_set[i]
-        tqdm.write(f"{ssl.shape}, {spec.shape}, {wav_norm.shape}, {spk.shape}")  # type:ignore
-
-
-@cli.command()
-def iter_train_loader():
-    dm = VCTKDataModule(config=DataConfig())
-    dm.setup("fit")
-    for batch in tqdm(dm.train_dataloader()):
-        tqdm.write(f"{batch[0].shape}, {batch[1].shape}, {batch[2].shape}, {batch[3].shape}")
-
-
 class VCTKCollate:
     def __init__(self, config: DataConfig):
         self.config = config
@@ -437,7 +417,7 @@ class VCTKCollate:
 
 
 class VCTKDataModule(LightningDataModule):
-    def __init__(self, *, config: DataConfig):
+    def __init__(self, config: DataConfig):
         super().__init__()
         self.config = config
 
@@ -466,3 +446,23 @@ class VCTKDataModule(LightningDataModule):
 
     def predict_dataloader(self):
         return self._create_dataloader(self.test_set, shuffle=False)
+
+
+@cli.command()
+def iter_train_set():
+    vctk = VCTK(config=DataConfig())
+    train_set = VCTKDataset(vctk, "train")
+
+    # print(vctk.load_sample("p254/p254_008.wav"))
+
+    for i in tqdm(range(len(train_set))):
+        ssl, spec, wav_norm, spk = train_set[i]
+        tqdm.write(f"{ssl.shape}, {spec.shape}, {wav_norm.shape}, {spk.shape}")  # type:ignore
+
+
+@cli.command()
+def iter_train_loader():
+    dm = VCTKDataModule(config=DataConfig())
+    dm.setup("fit")
+    for batch in tqdm(dm.train_dataloader()):
+        tqdm.write(f"{batch[0].shape}, {batch[1].shape}, {batch[2].shape}, {batch[3].shape}")
