@@ -123,8 +123,14 @@ class MyLightningCLI(LightningCLI):
         for field in dataclasses.fields(DataConfig):
             key = field.name
             parser.link_arguments(f"data.config.{key}", f"model.config.data.{key}")
-        parser.set_defaults({"trainer.enable_checkpointing": True})
-        parser.set_defaults({"trainer.max_epochs": 10})
+
+        parser.set_defaults(
+            {
+                "trainer.enable_checkpointing": True,
+                "trainer.max_epochs": 10,
+                "trainer.log_every_n_steps": 5,
+            }
+        )
 
 
 if __name__ == "__main__":
