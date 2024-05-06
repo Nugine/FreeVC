@@ -1,3 +1,4 @@
+from typing import Optional
 from .env import cli
 from .config import DataConfig
 from .utils import read_txt_lines
@@ -182,7 +183,12 @@ def preprocess_ssl():
 
 @cli.command()
 @torch.no_grad()
-def preprocess_sr(minh: int = 68, maxh: int = 92, cuda_rank=None, cuda_total=None):
+def preprocess_sr(
+    minh: int = 68,
+    maxh: int = 92,
+    cuda_rank: Optional[int] = None,
+    cuda_total: Optional[int] = None,
+):
     assert 68 <= minh <= maxh <= 92
 
     config = DataConfig()
