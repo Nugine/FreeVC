@@ -3,8 +3,9 @@ from .net import load_net
 from .mel_processing import spec_to_mel_torch, mel_spectrogram_torch
 from . import vits
 from .losses import discriminator_loss, feature_loss, generator_loss, kl_loss
-from torch.nn.functional import l1_loss
+from .data import VCTKDataModule
 
+from torch.nn.functional import l1_loss
 from lightning import LightningModule
 from lightning.pytorch.cli import LightningArgumentParser, LightningCLI
 import torch
@@ -121,4 +122,4 @@ class MyLightningCLI(LightningCLI):
 
 
 if __name__ == "__main__":
-    cli = MyLightningCLI(FreeVCModel)
+    cli = MyLightningCLI(FreeVCModel, VCTKDataModule)
