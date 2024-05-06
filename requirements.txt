@@ -1,2 +1,15 @@
-torch~=2.2.0
-typer~=0.9.0
+huggingface_hub~=0.23.0
+librosa~=0.10.2
+lightning~=2.2.4
+matplotlib~=3.8.3
+multiprocess~=0.70.15
+numpy~=1.26.1
+omegaconf~=2.0.6
+scipy~=1.12.0
+torch~=2.3.0
+torchaudio~=2.3.0
+torchvision~=0.18.0
+tqdm~=4.66.1
+transformers~=4.41.0.dev0
+typer~=0.12.3
+webrtcvad~=2.0.10
