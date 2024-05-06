@@ -26,7 +26,7 @@ def load_net(config: Config):
         upsample_kernel_sizes=config.net.upsample_kernel_sizes,
         gin_channels=config.net.gin_channels,
         ssl_dim=config.net.ssl_dim,
-        use_pretrained_spk=config.net.use_pretrained_spk,
+        use_pretrained_spk=config.data.use_pretrained_spk,
     )
     net_d = vits.MultiPeriodDiscriminator(
         use_spectral_norm=config.net.use_spectral_norm,

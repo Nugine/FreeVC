@@ -54,7 +54,6 @@ class NetConfig:
     use_spectral_norm: bool = False
     gin_channels: int = 256
     ssl_dim: int = 1024
-    use_pretrained_spk: bool = DataConfig.use_pretrained_spk
 
 
 @dataclass

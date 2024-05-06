@@ -33,7 +33,7 @@ class FreeVCModel(LightningModule):
         return [optimizer_g, optimizer_d], [scheduler_g, scheduler_d]
 
     def forward(self, ssl, spec, y, spk):
-        if self.config.net.use_pretrained_spk:
+        if self.config.data.use_pretrained_spk:
             g = spk
         else:
             g = None
@@ -53,7 +53,7 @@ class FreeVCModel(LightningModule):
     def training_step(self, batch, batch_idx):
         ssl, spec, y, spk = batch
 
-        if self.config.net.use_pretrained_spk:
+        if self.config.data.use_pretrained_spk:
             g = spk
         else:
             g = None
