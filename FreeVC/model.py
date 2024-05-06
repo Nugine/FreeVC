@@ -1,9 +1,11 @@
-from .config import Config
+from .config import Config, DataConfig
 from .net import load_net
 from .mel_processing import spec_to_mel_torch, mel_spectrogram_torch
 from . import vits
 from .losses import discriminator_loss, feature_loss, generator_loss, kl_loss
 from .data import VCTKDataModule
+
+import dataclasses
 
 from torch.nn.functional import l1_loss
 from lightning import LightningModule
@@ -118,7 +120,9 @@ class FreeVCModel(LightningModule):
 
 class MyLightningCLI(LightningCLI):
     def add_arguments_to_parser(self, parser: LightningArgumentParser) -> None:
-        parser.link_arguments("data.config", "model.config.data")
+        for field in dataclasses.fields(DataConfig):
+            key = field.name
+            parser.link_arguments(f"data.config.{key}", f"model.config.data.{key}")
 
 
 if __name__ == "__main__":
