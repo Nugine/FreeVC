@@ -33,6 +33,9 @@ class DataConfig:
 
     max_speclen: int = 128
 
+    partial_ratio: float = 1
+    sort_by_name: bool = False
+
 
 @dataclass
 class NetConfig:

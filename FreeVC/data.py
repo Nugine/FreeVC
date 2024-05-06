@@ -279,6 +279,14 @@ class VCTK:
             split_path = os.path.join(config.split_dir, f"{split}.txt")
             self.audio_paths[split] = read_txt_lines(split_path)
 
+        if config.partial_ratio < 1:
+            for split in ["train", "val", "test"]:
+                partial = int(len(self.audio_paths[split]) * config.partial_ratio)
+                self.audio_paths[split] = self.audio_paths[split][:partial]
+        if config.sort_by_name:
+            for split in ["train", "val", "test"]:
+                self.audio_paths[split].sort()
+
         self.wavlm = load_wavlm()
         self.wavlm = self.wavlm.cuda()  # type:ignore
 
@@ -431,7 +439,11 @@ class VCTKDataModule(LightningDataModule):
 
 @cli.command()
 def iter_train_set():
-    vctk = VCTK(config=DataConfig())
+    config = DataConfig()
+    config.sort_by_name = True
+    config.partial_ratio = 0.1
+
+    vctk = VCTK(config=config)
     train_set = VCTKDataset(vctk, "train")
 
     # print(vctk.load_sample("p254/p254_008.wav"))
@@ -443,7 +455,12 @@ def iter_train_set():
 
 @cli.command()
 def iter_train_loader():
-    dm = VCTKDataModule(config=DataConfig())
+    config = DataConfig()
+    config.sort_by_name = True
+    config.partial_ratio = 0.1
+    config.batch_size = 4
+
+    dm = VCTKDataModule(config=config)
     dm.setup("fit")
     for batch in tqdm(dm.train_dataloader()):
         tqdm.write(f"{batch[0].shape}, {batch[1].shape}, {batch[2].shape}, {batch[3].shape}")
