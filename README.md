@@ -1,5 +1,9 @@
 # FreeVC
 
+```bash
+./run --help
+```
+
 ## References
 
 VITS:
