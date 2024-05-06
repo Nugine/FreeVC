@@ -4,6 +4,7 @@ from .mel_processing import spec_to_mel_torch, mel_spectrogram_torch
 from . import vits
 from .losses import discriminator_loss, feature_loss, generator_loss, kl_loss
 from .data import VCTKDataModule
+from .env import cli
 
 import dataclasses
 
@@ -131,6 +132,12 @@ class MyLightningCLI(LightningCLI):
                 "trainer.log_every_n_steps": 5,
             }
         )
+
+
+@cli.command()
+def load_ckpt(ckpt_path: str):
+    model = FreeVCModel.load_from_checkpoint(ckpt_path)
+    print(model)
 
 
 if __name__ == "__main__":
