@@ -5,11 +5,12 @@ from . import vits
 from .losses import discriminator_loss, feature_loss, generator_loss, kl_loss
 from torch.nn.functional import l1_loss
 
-import lightning as L
+from lightning import LightningModule
+from lightning.pytorch.cli import LightningArgumentParser, LightningCLI
 import torch
 
 
-class FreeVCModel(L.LightningModule):
+class FreeVCModel(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         self.save_hyperparameters()
@@ -112,3 +113,12 @@ class FreeVCModel(L.LightningModule):
                 "loss_kl": loss_kl,
             }
         )
+
+
+class MyLightningCLI(LightningCLI):
+    def add_arguments_to_parser(self, parser: LightningArgumentParser) -> None:
+        parser.link_arguments("data.config", "model.config.data")
+
+
+if __name__ == "__main__":
+    cli = MyLightningCLI(FreeVCModel)
