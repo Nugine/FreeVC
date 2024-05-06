@@ -308,11 +308,9 @@ class VCTK:
 
         if self.config.use_pretrained_spk:
             spk_path = os.path.join(self.config.preprocess_spk_dir, path.replace(".wav", ".pt"))
-            spk = torch.load(spk_path).cuda()
+            spk = torch.load(spk_path)
         else:
             spk = None
-
-        wav_16k = wav_16k.cuda()
 
         wav_norm = wav_16k / self.config.max_wav_value
 
@@ -328,10 +326,10 @@ class VCTK:
         if self.config.use_sr_augment:
             h = random.randint(68, 92)
             ssl_path = os.path.join(self.config.preprocess_sr_dir, path.replace(".wav", f"_{h}.pt"))
-            ssl = torch.load(ssl_path).cuda().squeeze_(0)
+            ssl = torch.load(ssl_path).squeeze_(0)
         else:
             ssl_path = os.path.join(self.config.preprocess_ssl_dir, path.replace(".wav", ".pt"))
-            ssl = torch.load(ssl_path).cuda().squeeze_(0)
+            ssl = torch.load(ssl_path).squeeze_(0)
 
         return ssl, spec, wav_norm, spk
 
