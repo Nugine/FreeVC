@@ -143,9 +143,7 @@ class MyLightningCLI(LightningCLI):
 @torch.no_grad()
 def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
     model = FreeVCModel.load_from_checkpoint(ckpt_path)
-
-    model.net_g.load_state_dict(torch.load("./ckpt/freevc/freevc.pth"))
-
+    # model.net_g.load_state_dict(torch.load("./ckpt/freevc/freevc-s.pth")["model"])
     model = model.cuda()
 
     wavlm = load_wavlm().cuda()  # type:ignore
