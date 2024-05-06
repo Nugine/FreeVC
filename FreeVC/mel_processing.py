@@ -66,9 +66,9 @@ def spectrogram_torch(y, n_fft, sampling_rate, hop_size, win_size, center=False)
         pad_mode="reflect",
         normalized=False,
         onesided=True,
-        return_complex=True,
+        return_complex=False
     )
-    spec = torch.view_as_real(spec)
+    # spec = torch.view_as_real(spec)
 
     spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
     return spec
@@ -117,9 +117,9 @@ def mel_spectrogram_torch(y, n_fft, num_mels, sampling_rate, hop_size, win_size,
         pad_mode="reflect",
         normalized=False,
         onesided=True,
-        return_complex=True,
+        return_complex=False,
     )
-    spec = torch.view_as_real(spec)
+    # spec = torch.view_as_real(spec)
 
     spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
 
