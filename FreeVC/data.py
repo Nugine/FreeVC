@@ -197,21 +197,12 @@ def preprocess_sr(
     out_dir = config.preprocess_sr_dir
 
     wavlm = load_wavlm()
-    vocoder, vocoder_config = load_hifigan()
+    hifigan, hifigan_config = load_hifigan()
 
     wavlm = wavlm.cuda()  # type:ignore
-    vocoder = vocoder.cuda()  # type:ignore
+    hifigan = hifigan.cuda()  # type:ignore
 
-    mel_spectrogram = torchaudio.transforms.MelSpectrogram(
-        n_fft=vocoder_config.n_fft,
-        n_mels=vocoder_config.num_mels,
-        sample_rate=vocoder_config.sampling_rate,
-        win_length=vocoder_config.win_size,
-        hop_length=vocoder_config.hop_size,
-        f_min=vocoder_config.fmin,
-        f_max=vocoder_config.fmax,
-    ).cuda()
-    resample = torchaudio.transforms.Resample(orig_freq=vocoder_config.sampling_rate, new_freq=16000).cuda()
+    resample = torchaudio.transforms.Resample(orig_freq=hifigan_config.sampling_rate, new_freq=16000).cuda()
 
     filenames = glob(f"{in_dir}/*/*.wav", recursive=True)
     filenames.sort()
@@ -229,10 +220,19 @@ def preprocess_sr(
             os.makedirs(odir, exist_ok=True)
 
             wav, sr = torchaudio.load(filename)
-            assert sr == vocoder_config.sampling_rate
+            assert sr == hifigan_config.sampling_rate
             wav = wav.cuda()
 
-            mel = mel_spectrogram(wav)
+            mel = mel_spectrogram_torch(
+                wav,
+                n_fft=hifigan_config.n_fft,
+                num_mels=hifigan_config.num_mels,
+                sampling_rate=hifigan_config.sampling_rate,
+                hop_size=hifigan_config.hop_size,
+                win_size=hifigan_config.win_size,
+                fmin=hifigan_config.fmin,
+                fmax=hifigan_config.fmax,
+            )
 
             for h in range(minh, maxh + 1):
                 ssl_path = os.path.join(odir, wav_name.replace(".wav", f"_{h}.pt"))
@@ -241,7 +241,7 @@ def preprocess_sr(
                 if not os.path.exists(wav_path):
                     mel_rs = mel_resize(mel, h)
 
-                    wav_rs = vocoder(mel_rs)[0]
+                    wav_rs = hifigan(mel_rs)[0]
                     assert wav_rs.shape[0] == 1
 
                     wav_rs = resample(wav_rs)
@@ -266,28 +266,6 @@ def mel_resize(mel, height):  # 68-92
 @torch.no_grad()
 def calc_ssl_features(wavlm, wav):
     return wavlm(wav).last_hidden_state.transpose(1, 2)
-
-
-@torch.no_grad()
-def sr_augment(wav, h, hifigan, hifigan_config, resample):
-    mel = mel_spectrogram_torch(
-        wav,
-        n_fft=hifigan_config.n_fft,
-        num_mels=hifigan_config.num_mels,
-        sampling_rate=hifigan_config.sampling_rate,
-        hop_size=hifigan_config.hop_size,
-        win_size=hifigan_config.win_size,
-        fmin=hifigan_config.fmin,
-        fmax=hifigan_config.fmax,
-    )
-
-    mel_rs = mel_resize(mel, h)
-
-    wav_rs = hifigan(mel_rs)[0]
-    assert wav_rs.shape[0] == 1
-
-    wav_rs = resample(wav_rs)
-    return wav_rs
 
 
 class VCTK:
@@ -339,17 +317,8 @@ class VCTK:
 
         if self.config.use_sr_augment:
             h = random.randint(68, 92)
-
             ssl_path = os.path.join(self.config.preprocess_sr_dir, path.replace(".wav", f"_{h}.pt"))
-
-            if os.path.exists(ssl_path):
-                ssl = torch.load(ssl_path).cuda().squeeze_(0)
-            else:
-                wav_22k, sr = torchaudio.load(os.path.join(self.config.vctk_22k_dir, path))
-                assert sr == 22050
-                wav_22k = wav_22k.cuda()
-                wav_sr = sr_augment(wav_22k, h, self.hifigan, self.hifigan_config, self.resample_22kto16k)
-                ssl = calc_ssl_features(self.wavlm, wav_sr).squeeze_(0)
+            ssl = torch.load(ssl_path).cuda().squeeze_(0)
         else:
             ssl_path = os.path.join(self.config.preprocess_ssl_dir, path.replace(".wav", ".pt"))
             ssl = torch.load(ssl_path).cuda().squeeze_(0)
@@ -399,6 +368,7 @@ class VCTKCollate:
             row = batch[ids_sorted_decreasing[i]]
 
             c = row[0]
+            print("c", c.shape)
             c_padded[i, :, : c.size(1)] = c
 
             spec = row[1]
