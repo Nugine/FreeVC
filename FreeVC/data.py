@@ -394,6 +394,7 @@ class VCTKCollate:
             spec_lengths[-1] if spec_lengths[-1] < self.config.max_speclen + 1 else self.config.max_speclen + 1
         )
         wav_seglen = spec_seglen * self.config.hop_length
+        # print(f"DBG: max_spec_len={max_spec_len}, spec_seglen={spec_seglen}")
 
         spec_padded, ids_slice = vits.rand_spec_segments(spec_padded, spec_lengths, spec_seglen)  # type:ignore
         wav_padded = vits.slice_segments(wav_padded, ids_slice * self.config.hop_length, wav_seglen)  # type:ignore

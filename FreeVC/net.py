@@ -185,7 +185,9 @@ class SynthesizerTrn(nn.Module):
         z, m_q, logs_q, spec_mask = self.enc_q(spec, spec_lengths, g=g)
         z_p = self.flow(z, spec_mask, g=g)
 
-        z_slice, ids_slice = vits.rand_slice_segments(z, spec_lengths, self.segment_size)
+        # print(f"DBG: c.shape={c.shape}, spec.shape={spec.shape}, z.shape={z.shape}, spec_lengths.shape={spec_lengths.shape}, segment_size={self.segment_size}")
+
+        z_slice, ids_slice = vits.rand_slice_segments(z, spec_lengths, min(self.segment_size, z.size(-1)))
         o = self.dec(z_slice, g=g)
 
         return o, ids_slice, spec_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
