@@ -3,8 +3,11 @@ from .net import load_net
 from .mel_processing import spec_to_mel_torch, mel_spectrogram_torch
 from . import vits
 from .losses import discriminator_loss, feature_loss, generator_loss, kl_loss
-from .data import VCTKDataModule
+from .data import VCTKDataModule, calc_ssl_features
 from .env import cli
+from .wavlm import load_wavlm
+
+from speaker_encoder.voice_encoder import SpeakerEncoder
 
 import dataclasses
 
@@ -12,6 +15,8 @@ from torch.nn.functional import l1_loss
 from lightning import LightningModule
 from lightning.pytorch.cli import LightningArgumentParser, LightningCLI
 import torch
+import librosa
+from scipy.io import wavfile
 
 
 class FreeVCModel(LightningModule):
@@ -135,9 +140,41 @@ class MyLightningCLI(LightningCLI):
 
 
 @cli.command()
-def load_ckpt(ckpt_path: str):
+def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
     model = FreeVCModel.load_from_checkpoint(ckpt_path)
-    print(model)
+
+    wavlm = load_wavlm()
+
+    if model.config.data.use_pretrained_spk:
+        spk_encoder = SpeakerEncoder(model.config.data.pretrained_spk_ckpt_path)
+
+    wav_src, _ = librosa.load(src_path, sr=model.config.data.sampling_rate)
+    wav_src = torch.from_numpy(wav_src).unsqueeze(0).cuda()
+    ssl = calc_ssl_features(wavlm, wav_src)
+
+    wav_tgt, _ = librosa.load(tgt_path, sr=model.config.data.sampling_rate)
+    wav_tgt, _ = librosa.effects.trim(wav_tgt, top_db=20)
+
+    if model.config.data.use_pretrained_spk:
+        g_tgt = spk_encoder.embed_utterance(wav_tgt)
+        g_tgt = torch.from_numpy(g_tgt).unsqueeze(0).cuda()
+        audio = model.net_g.infer(ssl, g_tgt)
+    else:
+        wav_tgt = torch.from_numpy(wav_tgt).unsqueeze(0).cuda()
+        mel_tgt = mel_spectrogram_torch(
+            wav_tgt,
+            n_fft=model.config.data.filter_length,
+            num_mels=model.config.data.n_mel_channels,
+            sampling_rate=model.config.data.sampling_rate,
+            hop_size=model.config.data.hop_length,
+            win_size=model.config.data.win_length,
+            fmin=model.config.data.mel_fmin,
+            fmax=model.config.data.mel_fmax,
+        )
+        audio = model.net_g.infer(ssl, mel_tgt)
+
+    audio = audio.squeeze().cpu().float().numpy()
+    wavfile.write(save_path, rate=model.config.data.sampling_rate, data=audio)
 
 
 if __name__ == "__main__":
