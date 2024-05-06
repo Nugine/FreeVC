@@ -440,10 +440,10 @@ class VCTKDataModule(LightningDataModule):
 
 
 @cli.command()
-def iter_train_set():
+def iter_train_set(partial_ratio: float = 0.1):
     config = DataConfig()
     config.sort_by_name = True
-    config.partial_ratio = 0.1
+    config.partial_ratio = partial_ratio
 
     vctk = VCTK(config=config)
     train_set = VCTKDataset(vctk, "train")
@@ -456,11 +456,12 @@ def iter_train_set():
 
 
 @cli.command()
-def iter_train_loader():
+def iter_train_loader(partial_ratio: float = 0.1, batch_size: int = 4, num_workers: int = 16):
     config = DataConfig()
     config.sort_by_name = True
-    config.partial_ratio = 0.1
-    config.batch_size = 4
+    config.partial_ratio = partial_ratio
+    config.batch_size = batch_size
+    config.num_workers = num_workers
 
     dm = VCTKDataModule(config=config)
     dm.setup("fit")
