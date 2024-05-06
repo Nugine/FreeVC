@@ -456,12 +456,18 @@ def iter_train_set(partial_ratio: float = 0.1):
 
 
 @cli.command()
-def iter_train_loader(partial_ratio: float = 0.1, batch_size: int = 32, num_workers: int = 16):
+def iter_train_loader(
+    use_sr_augment: bool = False,
+    partial_ratio: float = 0.1,
+    batch_size: int = 32,
+    num_workers: int = 16,
+):
     config = DataConfig()
     config.sort_by_name = True
     config.partial_ratio = partial_ratio
     config.batch_size = batch_size
     config.num_workers = num_workers
+    config.use_sr_augment = use_sr_augment
 
     dm = VCTKDataModule(config=config)
     dm.setup("fit")
