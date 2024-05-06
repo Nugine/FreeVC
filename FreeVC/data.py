@@ -287,17 +287,17 @@ class VCTK:
             for split in ["train", "val", "test"]:
                 self.audio_paths[split].sort()
 
-        self.wavlm = load_wavlm()
-        self.wavlm = self.wavlm.cuda()  # type:ignore
+        # self.wavlm = load_wavlm()
+        # self.wavlm = self.wavlm.cuda()  # type:ignore
 
-        if self.config.use_sr_augment:
-            self.hifigan, self.hifigan_config = load_hifigan()
-            self.hifigan = self.hifigan.cuda()  # type:ignore
-            self.resample_22kto16k = torchaudio.transforms.Resample(orig_freq=22050, new_freq=16000)
-            self.resample_22kto16k = self.resample_22kto16k.cuda()  # type:ignore
+        # if self.config.use_sr_augment:
+        #     self.hifigan, self.hifigan_config = load_hifigan()
+        #     self.hifigan = self.hifigan.cuda()  # type:ignore
+        #     self.resample_22kto16k = torchaudio.transforms.Resample(orig_freq=22050, new_freq=16000)
+        #     self.resample_22kto16k = self.resample_22kto16k.cuda()  # type:ignore
 
-        if self.config.use_pretrained_spk:
-            self.spk_encoder = SpeakerEncoder(self.config.pretrained_spk_ckpt_path)
+        # if self.config.use_pretrained_spk:
+        #     self.spk_encoder = SpeakerEncoder(self.config.pretrained_spk_ckpt_path)
 
     @torch.no_grad()
     def load_sample(self, path):
