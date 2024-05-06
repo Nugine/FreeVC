@@ -117,13 +117,6 @@ class FreeVCModel(LightningModule):
             }
         )
 
-    def on_after_backward(self):
-        print("START", "-" * 40)
-        for name, param in self.named_parameters():
-            if param.grad is None:
-                print(name)
-        print("END", "-" * 40)
-
 
 class MyLightningCLI(LightningCLI):
     def add_arguments_to_parser(self, parser: LightningArgumentParser) -> None:
