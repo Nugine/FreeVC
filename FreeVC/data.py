@@ -182,7 +182,7 @@ def preprocess_ssl():
 
 @cli.command()
 @torch.no_grad()
-def preprocess_sr(minh: int = 68, maxh: int = 92):
+def preprocess_sr(minh: int = 68, maxh: int = 92, cuda_rank=None, cuda_total=None):
     assert 68 <= minh <= maxh <= 92
 
     config = DataConfig()
@@ -208,6 +208,11 @@ def preprocess_sr(minh: int = 68, maxh: int = 92):
     resample = torchaudio.transforms.Resample(orig_freq=vocoder_config.sampling_rate, new_freq=16000).cuda()
 
     filenames = glob(f"{in_dir}/*/*.wav", recursive=True)
+    filenames.sort()
+
+    if cuda_rank is not None:
+        assert cuda_total is not None
+        filenames = filenames[cuda_rank::cuda_total]
 
     with tqdm(total=len(filenames) * (maxh - minh + 1)) as pbar:
         for filename in filenames:
