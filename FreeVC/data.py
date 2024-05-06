@@ -456,7 +456,7 @@ def iter_train_set(partial_ratio: float = 0.1):
 
 
 @cli.command()
-def iter_train_loader(partial_ratio: float = 0.1, batch_size: int = 4, num_workers: int = 16):
+def iter_train_loader(partial_ratio: float = 0.1, batch_size: int = 32, num_workers: int = 16):
     config = DataConfig()
     config.sort_by_name = True
     config.partial_ratio = partial_ratio
