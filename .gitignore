@@ -8,3 +8,5 @@ __pycache__
 /temp
 /logs
 /ckpt
+
+/lightning_logs
