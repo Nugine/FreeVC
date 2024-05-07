@@ -186,6 +186,14 @@ def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
         )
         audio = model.net_g.infer(ssl, mel=mel_tgt)
 
+    audio = audio.squeeze().cpu().float().numpy()
+    print("audio:")
+    print(audio.shape)
+    print(audio)
+    wavfile.write(save_path, rate=model.config.data.sampling_rate, data=audio)
+
+    print("Done!")
+
     if False:
         mel_src = mel_spectrogram_torch(
             wav_src,
@@ -218,14 +226,6 @@ def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
         plt.imshow(mel_audio.squeeze(0).cpu().numpy())
         plt.title("mel_audio")
         plt.show()
-
-    audio = audio.squeeze().cpu().float().numpy()
-    print("audio:")
-    print(audio.shape)
-    print(audio)
-    wavfile.write(save_path, rate=model.config.data.sampling_rate, data=audio)
-
-    print("Done!")
 
 
 if __name__ == "__main__":
