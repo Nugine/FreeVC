@@ -448,10 +448,22 @@ def iter_train_set(partial_ratio: float = 0.1):
     train_set = VCTKDataset(vctk, "train")
 
     # print(vctk.load_sample("p254/p254_008.wav"))
-
+    # import matplotlib.pyplot as plt
     for i in tqdm(range(len(train_set))):
-        ssl, spec, wav_norm, spk = train_set[i]
-        tqdm.write(f"{ssl.shape}, {spec.shape}, {wav_norm.shape}, {spk.shape}")  # type:ignore
+        ssl, spec, wav, spk = train_set[i]
+        tqdm.write(f"{ssl.shape}, {spec.shape}, {wav.shape}, {spk.shape}")  # type:ignore
+        # mel=mel_spectrogram_torch(
+        #     wav,
+        #     n_fft=config.filter_length,
+        #     num_mels=config.n_mel_channels,
+        #     sampling_rate=config.sampling_rate,
+        #     hop_size=config.hop_length,
+        #     win_size=config.win_length,
+        #     fmin=config.mel_fmin,
+        #     fmax=config.mel_fmax,
+        # )
+        # plt.imshow(mel.squeeze(0).cpu().numpy())
+        # plt.show()
 
 
 # @cli.command()
