@@ -93,12 +93,15 @@ class FreeVCModel(LightningModule):
         y_d_hat_r, y_d_hat_g, _, _ = self.net_d(y, y_hat.detach())
 
         opt_g, opt_d = self.optimizers()  # type: ignore
+        lr_g = opt_g.param_groups[0]["lr"]
+        lr_d = opt_d.param_groups[0]["lr"]
 
         loss_disc, losses_disc_r, losses_disc_g = discriminator_loss(y_d_hat_r, y_d_hat_g)
         loss_disc_all = loss_disc
 
         opt_d.zero_grad()
         self.manual_backward(loss_disc_all)  # type:ignore
+        grad_norm_d = vits.clip_grad_value_(self.net_d.parameters(), None)
         opt_d.step()
 
         y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.net_d(y, y_hat)
@@ -110,6 +113,7 @@ class FreeVCModel(LightningModule):
 
         opt_g.zero_grad()
         self.manual_backward(loss_gen_all)
+        grad_norm_g = vits.clip_grad_value_(self.net_g.parameters(), None)
         opt_g.step()
 
         self.log_dict(
@@ -120,6 +124,10 @@ class FreeVCModel(LightningModule):
                 "loss_fm": loss_fm,
                 "loss_mel": loss_mel,
                 "loss_kl": loss_kl,
+                "lr_g": lr_g,
+                "lr_d": lr_d,
+                "grad_norm_g": grad_norm_g,
+                "grad_norm_d": grad_norm_d,
             }
         )
 
