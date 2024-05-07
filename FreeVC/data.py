@@ -313,10 +313,8 @@ class VCTK:
         else:
             spk = None
 
-        wav_norm = wav_16k / self.config.max_wav_value
-
         spec = spectrogram_torch(
-            wav_norm,
+            wav_16k,
             n_fft=self.config.filter_length,
             sampling_rate=16000,
             hop_size=self.config.hop_length,
@@ -332,7 +330,7 @@ class VCTK:
             ssl_path = os.path.join(self.config.preprocess_ssl_dir, path.replace(".wav", ".pt"))
             ssl = torch.load(ssl_path).squeeze_(0)
 
-        return ssl, spec, wav_norm, spk
+        return ssl, spec, wav_16k, spk
 
 
 class VCTKDataset(Dataset):
@@ -454,6 +452,30 @@ def iter_train_set(partial_ratio: float = 0.1):
     for i in tqdm(range(len(train_set))):
         ssl, spec, wav_norm, spk = train_set[i]
         tqdm.write(f"{ssl.shape}, {spec.shape}, {wav_norm.shape}, {spk.shape}")  # type:ignore
+
+
+# @cli.command()
+# def foo():
+#     path = "data/vctk-16k/p254/p254_008.wav"
+#     a, sr1 = torchaudio.load(path)
+#     b, sr2 = torchaudio.load(path, normalize=False)
+#     c, sr3 = librosa.load(path, sr=16000)
+#     d, sr4 = load_wav_to_torch(path)
+#     print(a.shape, b.shape, c.shape, d.shape)
+#     print(a.dtype, b.dtype, c.dtype, d.dtype)
+#     print(sr1, sr2, sr3, sr4)
+#     print(a)
+#     print(b)
+#     print(c)
+#     print(d)
+#     print(d / 32768)
+
+
+# def load_wav_to_torch(full_path):
+#     from scipy.io import wavfile
+
+#     sampling_rate, data = wavfile.read(full_path)
+#     return torch.FloatTensor(data.astype(np.float32)), sampling_rate
 
 
 @cli.command()
