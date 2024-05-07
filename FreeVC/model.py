@@ -149,9 +149,9 @@ class MyLightningCLI(LightningCLI):
 
 @cli.command()
 @torch.no_grad()
-def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
+def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str, plot: bool = False):
     model = FreeVCModel.load_from_checkpoint(ckpt_path)
-    model.net_g.load_state_dict(torch.load("./ckpt/freevc/freevc.pth")["model"])
+    # model.net_g.load_state_dict(torch.load("./ckpt/freevc/freevc.pth")["model"])
     # model.net_g.load_state_dict(torch.load("./ckpt/G.ckpt")["model"])
     model = model.cuda()
 
@@ -195,7 +195,7 @@ def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
 
     print("Done!")
 
-    if True:
+    if plot:
         mel_src = mel_spectrogram_torch(
             wav_src,
             n_fft=model.config.data.filter_length,
