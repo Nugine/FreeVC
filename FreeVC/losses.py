@@ -10,6 +10,7 @@ def feature_loss(fmap_r, fmap_g):
             rl = rl.float().detach()
             gl = gl.float()
             loss += torch.mean(torch.abs(rl - gl))
+
     return loss * 2
 
 
@@ -30,12 +31,13 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
 
 
 def generator_loss(disc_outputs):
+    loss = 0
     gen_losses = []
     for dg in disc_outputs:
         dg = dg.float()
         l = torch.mean((1 - dg) ** 2)
         gen_losses.append(l)
-    loss = sum(gen_losses)
+        loss += l
 
     return loss, gen_losses
 
