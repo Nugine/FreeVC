@@ -204,7 +204,8 @@ def preprocess_sr(
     wavlm = wavlm.to(device)  # type:ignore
     hifigan = hifigan.to(device)  # type:ignore
 
-    resample = torchaudio.transforms.Resample(orig_freq=hifigan_config.sampling_rate, new_freq=16000).to(device)
+    target_sr = 16000
+    resample = torchaudio.transforms.Resample(orig_freq=hifigan_config.sampling_rate, new_freq=target_sr).to(device)
 
     filenames = glob(f"{in_dir}/*/*.wav", recursive=True)
     filenames.sort()
@@ -250,7 +251,7 @@ def preprocess_sr(
 
                     ssl_features = calc_ssl_features(wavlm, wav_rs)
                     torch.save(ssl_features.cpu(), ssl_path)
-                    wavfile.write(wav_path, 16000, wav_rs.cpu().numpy().squeeze(0))
+                    wavfile.write(wav_path, target_sr, wav_rs.cpu().numpy().squeeze(0))
 
                 pbar.update()
 
