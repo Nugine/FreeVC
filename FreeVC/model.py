@@ -151,7 +151,7 @@ class MyLightningCLI(LightningCLI):
 @torch.no_grad()
 def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
     model = FreeVCModel.load_from_checkpoint(ckpt_path)
-    # model.net_g.load_state_dict(torch.load("./ckpt/freevc/freevc.pth")["model"])
+    model.net_g.load_state_dict(torch.load("./ckpt/freevc/freevc.pth")["model"])
     model = model.cuda()
 
     wavlm = load_wavlm().cuda()  # type:ignore
@@ -185,6 +185,39 @@ def convert(ckpt_path: str, src_path: str, tgt_path: str, save_path: str):
             fmax=model.config.data.mel_fmax,
         )
         audio = model.net_g.infer(ssl, mel=mel_tgt)
+
+    if False:
+        mel_src = mel_spectrogram_torch(
+            wav_src,
+            n_fft=model.config.data.filter_length,
+            num_mels=model.config.data.n_mel_channels,
+            sampling_rate=model.config.data.sampling_rate,
+            hop_size=model.config.data.hop_length,
+            win_size=model.config.data.win_length,
+            fmin=model.config.data.mel_fmin,
+            fmax=model.config.data.mel_fmax,
+        )
+        mel_audio = mel_spectrogram_torch(
+            audio.squeeze(0),
+            n_fft=model.config.data.filter_length,
+            num_mels=model.config.data.n_mel_channels,
+            sampling_rate=model.config.data.sampling_rate,
+            hop_size=model.config.data.hop_length,
+            win_size=model.config.data.win_length,
+            fmin=model.config.data.mel_fmin,
+            fmax=model.config.data.mel_fmax,
+        )
+        import matplotlib.pyplot as plt
+
+        # plt mel spectrogram
+        plt.figure()
+        plt.subplot(1, 2, 1)
+        plt.imshow(mel_src.squeeze(0).cpu().numpy())
+        plt.title("mel_src")
+        plt.subplot(1, 2, 2)
+        plt.imshow(mel_audio.squeeze(0).cpu().numpy())
+        plt.title("mel_audio")
+        plt.show()
 
     audio = audio.squeeze().cpu().float().numpy()
     print("audio:")
