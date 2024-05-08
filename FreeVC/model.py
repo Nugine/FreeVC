@@ -131,6 +131,14 @@ class FreeVCModel(LightningModule):
             }
         )
 
+        # if batch_idx % 50 == 0:
+            # print("mel", mel.shape)
+            # print("y_mel", y_mel.shape)
+            # print("y_hat_mel", y_hat_mel.shape)
+            # tensorboard = self.logger.experiment  # type:ignore
+            # tensorboard.add_image("y_mel", y_mel[0], global_step=self.global_step)
+            # tensorboard.add_image("y_hat_mel", y_hat_mel[0], global_step=self.global_step)
+
 
 class MyLightningCLI(LightningCLI):
     def add_arguments_to_parser(self, parser: LightningArgumentParser) -> None:
